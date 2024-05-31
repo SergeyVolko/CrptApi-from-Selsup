@@ -1,5 +1,6 @@
 package org.example;
 
+import com.google.gson.Gson;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
@@ -8,6 +9,45 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class CrptApi {
+
+    public static void main(String[] args) {
+        JSONDocumentConverter jsonDocumentConverter = new JSONDocumentConverter();
+        String json = """
+                {
+                  "document" : {
+                  "description": { "participantInn": "string" },\s
+                  "doc_id": "string",\s
+                  "doc_status": "string",\s
+                  "doc_type": "LP_INTRODUCE_GOODS",\s
+                  "importRequest": true,\s
+                  "owner_inn": "string",\s
+                  "participant_inn": "string",\s
+                  "producer_inn": "string",\s
+                  "production_date": "2020-01-23",\s
+                  "production_type": "string",\s
+                  "products": [\s
+                    { "certificate_document": "string",\s
+                      "certificate_document_date": "2020-01-23",\s
+                      "certificate_document_number": "string",\s
+                      "owner_inn": "string",\s
+                      "producer_inn": "string",\s
+                      "production_date": "2020-01-23",\s
+                      "tnved_code": "string", "uit_code": "string",\s
+                     "uitu_code": "string" }\s
+                  ],\s
+                  "reg_date": "2020-01-23",\s
+                  "reg_number": "string"
+                  },
+                  "signature" : "string"
+                }
+                """;
+        DocumentSender document = jsonDocumentConverter.getDocumentFromJson(json);
+        System.out.println(document);
+        String jsonResult = jsonDocumentConverter.getJsonFromDocument(document);
+        System.out.println(jsonResult);
+    }
+
+
     private static class Delay {
         private final TimeUnit timeUnit;
         private final int requestLimit;
@@ -31,6 +71,18 @@ public class CrptApi {
                 return;
             }
             countRequest++;
+        }
+    }
+
+    private static class JSONDocumentConverter {
+        private final Gson gson = new Gson();
+
+        private DocumentSender getDocumentFromJson(String json) {
+            return gson.fromJson(json, DocumentSender.class);
+        }
+
+        private String getJsonFromDocument(DocumentSender document) {
+            return gson.toJson(document, DocumentSender.class);
         }
     }
 
@@ -156,8 +208,12 @@ public class CrptApi {
 
     }
 
+
+    private enum TypeDoc {
+        LP_INTRODUCE_GOODS
+    }
     @Generated("jsonschema2pojo")
-    private static class Document {
+    static class Document {
 
         @SerializedName("description")
         @Expose
@@ -170,7 +226,7 @@ public class CrptApi {
         private String docStatus;
         @SerializedName("doc_type")
         @Expose
-        private String docType;
+        private TypeDoc docType;
         @SerializedName("importRequest")
         @Expose
         private Boolean importRequest;
@@ -223,11 +279,11 @@ public class CrptApi {
             this.docStatus = docStatus;
         }
 
-        public String getDocType() {
+        public TypeDoc getDocType() {
             return docType;
         }
 
-        public void setDocType(String docType) {
+        public void setDocType(TypeDoc docType) {
             this.docType = docType;
         }
 
@@ -301,6 +357,34 @@ public class CrptApi {
 
         public void setRegNumber(String regNumber) {
             this.regNumber = regNumber;
+        }
+
+    }
+
+    @Generated("jsonschema2pojo")
+    private static class DocumentSender {
+
+        @SerializedName("document")
+        @Expose
+        private Document document;
+        @SerializedName("signature")
+        @Expose
+        private String signature;
+
+        public Document getDocument() {
+            return document;
+        }
+
+        public void setDocument(Document document) {
+            this.document = document;
+        }
+
+        public String getSignature() {
+            return signature;
+        }
+
+        public void setSignature(String signature) {
+            this.signature = signature;
         }
 
     }
