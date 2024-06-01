@@ -3,14 +3,42 @@ package org.example;
 import com.google.gson.Gson;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 
 import javax.annotation.Generated;
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class CrptApi {
 
-    public static void main(String[] args) {
+    private final Delay delay;
+    private final PostDocumentCreated documentCreated;
+
+    public CrptApi(TimeUnit timeUnit, int requestLimit) {
+        this.delay = new Delay(timeUnit, requestLimit);
+        this.documentCreated = new PostDocumentCreated();
+    }
+
+    public synchronized void createDocument(Document document, String signature) throws InterruptedException {
+        delay.delay();
+        CloseableHttpResponse response = documentCreated.requestDocument(document, signature);
+        if (response == null) {
+            return;
+        }
+        int statusCode = response.getStatusLine().getStatusCode();
+        if (statusCode == 200) {
+            System.out.println("Document successfully created");
+        } else {
+            System.out.println("Failed to create document. Status code: " + statusCode);
+        }
+        System.out.println("test");
+    }
+    public static void main(String[] args) throws InterruptedException {
         JSONDocumentConverter jsonDocumentConverter = new JSONDocumentConverter();
         String json = """
                 {
@@ -41,12 +69,46 @@ public class CrptApi {
                   "signature" : "string"
                 }
                 """;
-        DocumentSender document = jsonDocumentConverter.getDocumentFromJson(json);
-        System.out.println(document);
-        String jsonResult = jsonDocumentConverter.getJsonFromDocument(document);
+        DocumentSender documentSender = jsonDocumentConverter.getDocumentSenderFromJson(json);
+        System.out.println(documentSender);
+        String jsonResult = jsonDocumentConverter.getJsonFromDocumentSender(documentSender);
         System.out.println(jsonResult);
+        Document document = documentSender.getDocument();
+        String signature = documentSender.getSignature();
+        CrptApi crptApi = new CrptApi(TimeUnit.MINUTES, 1);
+        for (int i = 0; i < 10; i++) {
+            crptApi.createDocument(document, signature);
+        }
     }
 
+
+    private static class PostDocumentCreated {
+        private static final String API_URL = "https://ismp.crpt.ru/api/v3/lk/documents/create";
+        private final JSONDocumentConverter converter;
+
+        private PostDocumentCreated() {
+            this.converter = new JSONDocumentConverter();
+        }
+
+        public CloseableHttpResponse requestDocument(Document document, String signature) {
+            try(CloseableHttpClient httpClient = HttpClients.createDefault()) {
+                HttpPost httpPost = new HttpPost(API_URL);
+                httpPost.setHeader("Content-Type", "application/json");
+                DocumentSender documentSender = new DocumentSender();
+                documentSender.setDocument(document);
+                documentSender.setSignature(signature);
+                String requestBody = converter.getJsonFromDocumentSender(documentSender);
+                StringEntity entity = new StringEntity(requestBody);
+                httpPost.setEntity(entity);
+                try(CloseableHttpResponse response = httpClient.execute(httpPost)) {
+                    return response;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
 
     private static class Delay {
         private final TimeUnit timeUnit;
@@ -66,9 +128,8 @@ public class CrptApi {
             if (countRequest == requestLimit) {
                 long diff = time + timeUnit.toChronoUnit().getDuration().toNanos() - System.nanoTime();
                 countRequest = 0;
-                time = 0;
                 TimeUnit.NANOSECONDS.sleep(diff);
-                return;
+                time = System.nanoTime();
             }
             countRequest++;
         }
@@ -77,13 +138,15 @@ public class CrptApi {
     private static class JSONDocumentConverter {
         private final Gson gson = new Gson();
 
-        private DocumentSender getDocumentFromJson(String json) {
+        public DocumentSender getDocumentSenderFromJson(String json) {
             return gson.fromJson(json, DocumentSender.class);
         }
 
-        private String getJsonFromDocument(DocumentSender document) {
+        public String getJsonFromDocumentSender(DocumentSender document) {
             return gson.toJson(document, DocumentSender.class);
         }
+
+
     }
 
     @Generated("jsonschema2pojo")
