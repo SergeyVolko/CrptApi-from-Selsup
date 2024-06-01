@@ -24,6 +24,12 @@ public class CrptApi {
         this.documentCreated = new PostDocumentCreated();
     }
 
+    /**
+     *
+     * @param document - передаваемый документ
+     * @param signature - подпись документа
+     * @throws InterruptedException
+     */
     public synchronized void createDocument(Document document, String signature) throws InterruptedException {
         delay.delay();
         CloseableHttpResponse response = documentCreated.requestDocument(document, signature);
@@ -82,6 +88,9 @@ public class CrptApi {
     }
 
 
+    /**
+     * Класс позволяющий выполнить post запрос на добавление доумента
+     */
     private static class PostDocumentCreated {
         private static final String API_URL = "https://ismp.crpt.ru/api/v3/lk/documents/create";
         private final JSONDocumentConverter converter;
@@ -90,6 +99,13 @@ public class CrptApi {
             this.converter = new JSONDocumentConverter();
         }
 
+        /**
+         * Метод выполняющий post запрос и возвращающий ответ.
+         * В нем формируется подписанный документ и отправляется методом post
+         * @param document - не подписанный документ
+         * @param signature - подпись документа
+         * @return - ответ на post запрос
+         */
         public CloseableHttpResponse requestDocument(Document document, String signature) {
             try(CloseableHttpClient httpClient = HttpClients.createDefault()) {
                 HttpPost httpPost = new HttpPost(API_URL);
@@ -110,6 +126,9 @@ public class CrptApi {
         }
     }
 
+    /**
+     * Класс, ограничивающий количество вызовов метода
+     */
     private static class Delay {
         private final TimeUnit timeUnit;
         private final int requestLimit;
@@ -135,6 +154,9 @@ public class CrptApi {
         }
     }
 
+    /**
+     * Конвертер объекта DocumentSender в Json и обратно
+     */
     private static class JSONDocumentConverter {
         private final Gson gson = new Gson();
 
